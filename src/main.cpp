@@ -4,6 +4,8 @@ Simulador pantalla OLED (ya cableada)
 https://wokwi.com/arduino/libraries/Adafruit_SSD1306/ssd1306_128x64_i2c
 PINOUT ESP-07:
 https://randomnerdtutorials.com/esp8266-pinout-reference-gpios/
+OTA UPDATES:
+https://randomnerdtutorials.com/esp8266-nodemcu-ota-over-the-air-vs-code/
 */
 
 
@@ -16,10 +18,16 @@ https://randomnerdtutorials.com/esp8266-pinout-reference-gpios/
 #include "DHT.h"
 #include "Streaming.h"
 
+// OLED DISPLAY
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+
+// OTA
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <AsyncElegantOTA.h>
 
 // Provide the token generation process info.
 #include "addons/TokenHelper.h"
@@ -41,12 +49,16 @@ DHT dht(DHT_PIN, DHTTYPE);
 ADC_MODE(ADC_VCC);
 // DISPLAY OLED
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+// OTA web server
+AsyncWebServer server(80);
+
 
 void initWiFi();
 unsigned long getTime();
 bool displayConnect();
 void displayDatos(float temp, float hum, float volts, unsigned int now);
 void initFirebase();
+void initOTA();
 
 void setup() 
 {
@@ -61,8 +73,7 @@ void setup()
   if(displayConnect())
   {
     //testscrolltext();    // Draw scrolling text
-     display.clearDisplay();
-
+    display.clearDisplay();
     display.setTextSize(1); // Draw 2X-scale text
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
@@ -73,6 +84,7 @@ void setup()
     delay(2000);
   }
   initFirebase();
+  initOTA();
 }
 
 void loop() 
@@ -173,8 +185,16 @@ void initFirebase()
   uid = auth.token.uid.c_str();
   Serial << F("User Id: ") << uid << F("\n");
   databasePath = "/UsersData/" + uid + "/readings";
+}
 
-
-
+void initOTA()
+{
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "Hi! I am ESP8266.");
+  });
+  AsyncElegantOTA.begin(&server);
+  server.begin();
+  Serial << F("HTTP Server started \n");
 
 }
+
